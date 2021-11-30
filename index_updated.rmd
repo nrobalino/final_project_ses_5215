@@ -1,0 +1,512 @@
+---
+title: "Assignment 6"
+author: "Grace Levin, Sam Lewis, Naomi Robalino"
+date: "11/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+```
+
+# Assignment 6
+
+## 1. Research Question
+
+How well does the increase in rent prices predict the number of people experiencing homelessness in the United States on the state level? 
+
+## 2. Prior Research
+
+At first, we wanted to know the relationship between types of affordable housing and houselessness rates. However, according to Petry et. al. (2021) people at high risk of experiencing houselessness were likely to re-enter houselessness regardless of their housing type; they found those at high risk of experiencing houselessness depended on their structural vulnerabilities. We instead decided to focus on larger scale forces such as the housing market and median rent prices in order to see how it affects the houselessness rate in the U.S. at the state level. Additionally, according to the U.S. Interagency Council on Homelessness (2021), households with higher levels of housing stability and access to housing affordability have a lower likelihood of entering houselessness, so we decided to look at the percent increase in rents as well. 
+
+## 3. Data
+
+The sample set for this study is all states in the United States. The analysis will include the following variables:
+
+Categorical:
+
+* Region the U.S. state in is (U.S (American Community Survey 2019) [region]
+* Majority party in the state legislature ("State Legislative Elections, 2021 - Ballotpedia" 2021) [party_stateleg]
+
+Continuous:
+
+* Number of people experience poverty per capita (American Community Survey 2019) 
+[per_pov]
+* Percent Increase in rents since 2001 (American Community Survey 2019) [perincrease_rent]
+* Number of people experiencing houselessness per capita (HUD 2018 Annual Homelessness Assessment Report) [per_home] 
+* Rate of beds per houseless population (PIT and HIC Data Since 
+2007, 2021) [per_bed]
+
+This data set includes 49 states and the District of Columbia. 
+
+
+
+## 4. References
+
+"National And State Housing Fact Sheets & Data". 2019. Center On Budget And Policy Priorities. https://www.cbpp.org/research/housing/national-and-state-housing-fact-sheets-data.
+
+Petry, Laura, Chyna Hill, Phebe Vayanos, Eric Rice, Hsun-Ta Hsu, and Matthew Morton. “Associations Between the Vulnerability Index-Service Prioritization Decision Assistance Tool and Returns to Homelessness Among Single Adults in the United States.” Cityscape 23, no. 2 (2021): 293–324. https://www.jstor.org/stable/27039964.
+
+"PIT And HIC Data Since 2007". 2021. Hudexchange.Info. https://www.hudexchange.info/resource/3031/pit-and-hic-data-since-2007/.
+
+"State Legislative Elections, 2021 - Ballotpedia". 2021. Ballotpedia. https://ballotpedia.org/State_legislative_elections,_2021.
+
+2021. Usich.Gov. https://www.usich.gov/resources/uploads/asset_library/Housing-Affordability-and-Stablility-Brief.pdf.
+
+United States Census Bureau. American Community Survey, 5-year estimates. 2019.
+
+
+## 5. Load Packages
+First we loaded the following packages:
+
+```{r}
+
+library(osmextract)
+library(tidyverse)
+library(sf)
+library(ggthemes)
+library(ggspatial)
+library(tigris)
+library(wesanderson)
+library(tidytransit)
+library(tidycensus)
+library(dplyr)
+library(stars)
+library(readxl)
+library(knitr)
+library(gridExtra)
+library(spData)
+library(tidyr)
+library(jtools)
+library(huxtable)
+library(interactions)
+```
+
+## 6. Load Data
+
+Then, we imported the American Community Census data recorded in 2019 (from the year 2015-2019) and the census data
+
+```{r}
+acs_vars <- load_variables(2019, "acs1")
+```
+
+Then we loaded the state poverty levels and the state population from the 2019 ACS data.
+
+```{r}
+state_poverty <- get_acs(geography = "state",
+                         year = 2019,
+                          output = "wide",
+                          variables = c(poverty = 'B05010_002', pop = 'B01003_001'))
+  
+```
+
+
+Then, we loaded state housing facts.
+
+```{r}
+state_housing <- read_csv(file = 'statehousingfacts.csv')
+```
+
+Then we loaded bed counts per state.
+
+```{r}
+state_shelter <- read_csv(file = 'state_bed.csv') %>%
+  rename (bed_counts_per_state = beds)
+```
+
+## 7. Join Data
+
+Lastly, we joined the state poverty, state housing, state shelter.
+
+```{r}
+data <- inner_join(state_poverty, state_housing, by = 'NAME') %>% 
+  inner_join(state_shelter) %>%
+  mutate(per_home = homelessness / popE) %>%
+  mutate(per_bed = bed_counts_per_state / homelessness) %>%
+  mutate(per_pov = povertyE / popE)
+
+data <- select(data, -popM, -povertyM)
+
+knitr::kable(data)
+
+```
+
+---
+title: "Assignment 2"
+---
+
+## Calculate Continuous variables (Quartiles, Standard Deviation, and Confidence Levels)
+
+```{r}
+poverty_t_test <- t.test(data$per_pov)
+popE_t_test <- t.test(data$popE)
+median_rent_t_test <- t.test(data$median_rent)
+perincrease_rent_t_test <- t.test(data$perincrease_rent)
+per_home_t_test <- t.test(data$per_home)
+per_bed_t_test <- t.test(data$per_bed)
+
+poverty_quartiles <- quantile(data$per_pov, na.rm = TRUE)
+popE_quartiles <- quantile(data$popE, na.rm = TRUE)
+median_rent_quartiles <- quantile(data$median_rent, na.rm = TRUE)
+perincrease_rent_quartiles <- quantile(data$perincrease_rent, na.rm = TRUE)
+per_home_quartiles <- quantile(data$per_home, na.rm = TRUE)
+per_bed_quartiles <- quantile(data$per_bed, na.rm = TRUE)
+
+
+poverty_st_dev <- sd(data$per_pov, na.rm = TRUE)
+popE_st_dev <- sd(data$popE, na.rm = TRUE)
+median_rent_st_dev <- sd(data$median_rent, na.rm = TRUE)
+perincrease_rent_st_dev <- sd(data$perincrease_rent, na.rm = TRUE)
+per_home_st_dev <- sd(data$per_home, na.rm = TRUE)
+per_bed_st_dev <- sd(data$per_bed, na.rm = TRUE)
+
+
+```
+
+## Creating the Histograms
+```{r}
+
+poverty_hist <- ggplot(data) +
+  geom_histogram(aes(x = per_pov),
+                 bins = 30)
+
+popE_hist <- ggplot(data) +
+  geom_histogram(aes(x = popE),
+                 bins = 30)
+
+median_rent_hist <- ggplot(data) +
+  geom_histogram(aes(x = median_rent),
+                 bins = 30)
+
+perincrease_rent_hist <- ggplot(data) +
+  geom_histogram(aes(x = perincrease_rent),
+                 bins = 30)
+
+per_home_hist <- ggplot(data) +
+  geom_histogram(aes(x = per_home),
+                 bins = 30)
+
+per_bed_hist <- ggplot(data) +
+  geom_histogram(aes(x = per_bed),
+                 bins = 30)
+
+```
+
+# Displaying each data set's histogram
+
+## Poverty
+```{r}
+
+poverty_t_test 
+poverty_st_dev
+poverty_hist
+
+```
+
+# Population
+
+```{r}
+popE_t_test 
+popE_st_dev
+popE_hist
+```
+
+# Median Rent
+
+```{r}
+median_rent_t_test 
+median_rent_st_dev
+median_rent_hist
+```
+
+# Percent Increase in Rent
+
+```{r}
+perincrease_rent_t_test 
+perincrease_rent_st_dev
+perincrease_rent_hist
+```
+
+# Homelessness Count
+```{r}
+per_home_t_test 
+per_home_st_dev
+per_home_hist
+```
+
+
+# Homeless Shelter Bed Count
+```{r}
+per_bed_t_test 
+per_bed_st_dev
+per_bed_hist
+
+```
+
+## Continuous Variables - Formatted Table
+
+
+```{r}
+cont_summary <- tibble(
+  Variable = c("Poverty Rate",
+                "Population",
+                "Rent",
+                "Percent Increase Rent",
+                "Houselessness Rate",
+                "Bed Availability "),
+  `Sample mean` = c(poverty_t_test$estimate * 100,
+                    popE_t_test$estimate,
+                    median_rent_t_test$estimate,
+                    perincrease_rent_t_test$estimate * 100,
+                    per_home_t_test$estimate * 100,
+                    per_bed_t_test$estimate * 100),
+  `Population mean (95% confidence) - low` = 
+    c(poverty_t_test$conf.int[1] * 100,
+      popE_t_test$conf.int[1],
+      median_rent_t_test$conf.int[1],
+      perincrease_rent_t_test$conf.int[1] * 100,
+      per_home_t_test$conf.int[1] * 100,
+      per_bed_t_test$conf.int[1] * 100),
+  `Population mean (95% confidence) - high` =
+    c(poverty_t_test$conf.int[2] * 100,
+      popE_t_test$conf.int[2],
+      median_rent_t_test$conf.int[2],
+      perincrease_rent_t_test$conf.int[2] * 100,
+      per_home_t_test$conf.int[2] * 100,
+      per_bed_t_test$conf.int[2]* 100),
+  Median = c(poverty_quartiles[3],
+             popE_quartiles[3],
+             median_rent_quartiles[3],
+             perincrease_rent_quartiles[3] * 100,
+             per_home_quartiles[3] * 100,
+             per_bed_quartiles[3]* 100),
+  `Interquartile range` = c((poverty_quartiles[4] - poverty_quartiles[2]) * 100,
+                            popE_quartiles[4] - popE_quartiles[2],      median_rent_quartiles[4] - median_rent_quartiles[2], (perincrease_rent_quartiles[4] - perincrease_rent_quartiles[2]) * 100, (per_home_quartiles[4] - per_home_quartiles[2]) * 100, (per_bed_quartiles[4] - per_bed_quartiles[2]) * 100),
+  `Standard deviation` = c(poverty_st_dev * 100,
+                          popE_st_dev,
+                          median_rent_st_dev,
+                          perincrease_rent_st_dev * 100,
+                          per_home_st_dev * 100,
+                          per_bed_st_dev * 100))
+
+kable(cont_summary, digits = 2)
+```
+
+
+
+
+## Categorical Variables - Formatted Table
+
+```{r}
+pct_repub <- t.test(data$party_stateleg == "Republican")
+pct_dem <-  t.test(data$party_stateleg == "Democrat")
+```
+
+
+```{r}
+cat_summary_party <- tibble(`Majority Party in 2020` = 
+                              c("Republican",
+                                "Democrat"),
+                            `Sample proportion` = 
+                              c(pct_repub$estimate * 100,
+                                pct_dem$estimate *100),
+                            `95-percent confidence - low` = 
+                              c(pct_repub$conf.int[1] * 100,
+                                pct_dem$conf.int[1] * 100),
+                            `95-percent confidence - high` = 
+                              c(pct_repub$conf.int[2] * 100,
+                                pct_dem$conf.int[2] * 100))
+```
+
+
+```{r}
+kable(cat_summary_party, digits = 0)
+```
+
+
+# Categorical Variables - Bar Chart with error bars
+```{r}
+ggplot(cat_summary_party) +
+  geom_bar(aes(x = `Majority Party in 2020`, 
+               y = `Sample proportion`),
+           stat = "identity") +
+  geom_errorbar(aes(x = `Majority Party in 2020`, 
+               y = `Sample proportion`,
+               ymin = `95-percent confidence - low`,
+               ymax = `95-percent confidence - high`),
+           stat = "identity") +
+  scale_y_continuous(name = "Percent of counties",
+                     breaks = c(0, 20, 40, 60, 80),
+                     labels = c("0", "20%", "40%", "60%", "80%")) +
+  theme_bw()
+```
+# Correlations 
+
+## Rate of Houselessness and Percent Increase in Rent
+Here we test the correlation of rate of houselessness and percent increase in rent. The 95 percent confidence interval does not include zero and all values in the interval are positive. This means we can say with 95 percent confidence that higher rates of houselessness are associated with higher percent increases in rent.
+```{r}
+cor.test(~ perincrease_rent + per_home, data = data)
+```
+
+We get the same results from the regression. The p value is less than 0.05 so we are 95% confident there is a correlation between the variables. 
+```{r}
+home_model <- lm(per_home ~ perincrease_rent, data = data)
+
+summary(home_model)
+```
+
+# Difference in Means/Regression on Categorical Variables
+
+## Rate of Houselessness and Political Party
+Here we test if Republican leaning states have higher rates of houselessness than Democratic leaning states on average. The p value is less than 0.05 which means the relationship is significant between the two variables. This means we can say with 95 percent confidence that higher rates of houselessness are associated with political party for the state legislature.
+```{r}
+t.test(per_home ~ party_stateleg, data)
+```
+We see the same thing from the regression that the relationship is significant. 
+```{r}
+party_model <- lm(per_home ~ party_stateleg, data = data)
+
+summary(party_model)
+```
+## Displaying The Data - Scatterplot
+
+Here we plotted the relationship between percent increase in rent and rate of houselessness for U.S. states. The graph demonstrates that higher percent increase in rent correlates with higher rates of houselessness. 
+```{r}
+ggplot(home_model) +
+  geom_point(aes(x = perincrease_rent, y = per_home),alpha = 0.8, shape = 22, fill = "darkblue")+
+  ggtitle("How Percent Increase in Rent Correlates \n with Rate of Houselessness \n per U.S. State") +
+    xlab("Percent Increase in Rent per State") +
+  ylab("Rate of Houselessness per State") +
+  theme(plot.title = element_text (size  = 1)) +
+  theme_wsj(base_size = 5, color = "blue") + theme(axis.title=element_text(size = 10))
+
+
+```
+
+# Multivariate Regression
+
+We’ve determined that states with a higher percent increase in rent have higher rates of houselessness, and so do states with a Democratic state legislature. In order to get the separate effects on each of these variable, we need to estimate all of these relationships at once. We achieve this with the lm() function. We list all the independent variables (rate of poverty, political party, number of beds per houseless population), separated by a plus sign.
+
+```{r}
+full_model <- lm(per_home ~ per_pov + per_bed + party_stateleg + perincrease_rent, data)
+
+summary(full_model)
+```
+## Analysis
+
+In our bivariate regression, we found that each 1 percent increase in rent was associated with an increase of about 0.01034 rate of houselessness per capita. When we control for rate of poverty, political party for the state legislature, and rate of beds per houseless population we find that relationship is still statistically significant. Holding everything else constant, each 1 percent increase in rent is associated with an increase of about .0095205 rate of houselessness per capita, on average. This is at a 99% confidence interval with a P-value of .000000162.
+
+On the other hand, our bivariate regression with political party found that compared to Democratic states, republican states decrease rate of houselessness by. 0013986. Once we’ve controlled for our other variables, we find that relationship is not statistically significant. The P-value is 0.263 which means that political parties for state legislature is not a strong factor for rate of houselessness per state. Since the P-value is greater than 0.05 we cannot say with 95% confidence that political party is a strong factor.
+
+We found that rate of poverty and rate of beds per houseless population were not statistically significant since the P-values are both greater than 0.05 (0.772 and 0.439, respectively).
+
+In conclusion, when we control for other variables only the percent increase in rent had a significant impact on rate of houselessness in US states. Overall, our model explains about 57% (0.5685) of the variation in rates of houselessness per capita.
+
+This analysis has policy implications since we know that percent increase in rent per state severely predicts houselessness based on our data. This conclusion is limited since we use data from only the year 2019 and houselessness is hard to track. 
+
+# Linear Transformations
+
+## Centering the Data
+
+Our previous coefficients table showed an intercept value assuming a state with a zero rate of poverty, zero percent increase in rent, and zero percent beds per houseless population. This intercept is not helpful because such a state does not exist. We decided to center the means in order to create a regression model with an intercept that showed the houselessness rate for a state's average rate of poverty, average rate of percent increase in rent, and average percent number of beds per houseless population. 
+
+```{r}
+centered_data <- data %>%
+  mutate(perincrease_rent = perincrease_rent - mean(perincrease_rent, na.rm=TRUE),
+         per_pov = per_pov - mean(per_pov, na.rm=TRUE),
+         per_bed = per_bed - mean(per_bed, na.rm = TRUE))
+
+
+centered_model <- lm(per_home ~ perincrease_rent + per_pov + per_bed + party_stateleg, centered_data)
+
+export_summs(full_model, centered_model, 
+             error_format = "(p = {p.value})",
+             error_pos = "same",
+             model.names = c("Initial", "Centered"))
+```
+
+## Scaling
+
+After centering the means, the numbers still appear to be very small. In order to be able to interpret the coefficient values, we decided to scale our variables to  predict the number of houseless persons per 1000 people. 
+
+```{r}
+centered_data_scaled <- centered_data %>%
+  mutate(per_home = per_home * 1000,
+         perincrease_rent_1 = perincrease_rent * 1000,
+         per_pov_1 = per_pov * 1000,
+         per_bed_1 = per_bed * 1000)
+
+coeff_names_scaled <- c("Constant" = "(Intercept)",
+                 "Percent Increase in Rent" = "perincrease_rent",
+                 "Percent Increase in Rent (per 1000%)" = "perincrease_rent_1",
+                 "Poverty rate" = "per_pov",
+                 "Poverty rate (per 1000 people)" = "per_pov_1",
+                 "Beds per Houseless Population" = "per_bed",
+                 "Beds per Houseless Population (per 1000 people)" = "per_bed_1",
+                 "Republican State Majority" = "party_statelegRepublican")
+```
+
+
+```{r}
+centered_model_scaled <- lm(per_home ~ perincrease_rent_1 + per_pov_1 + per_bed_1 + party_stateleg, centered_data_scaled)
+
+export_summs(full_model, centered_model, centered_model_scaled,
+             error_format = "(p = {p.value})",
+             error_pos = "same",
+             model.names = c("Initial\n(houseless persons per capita)", 
+                             "Centered\n(houseless persons per capita)", 
+                             "Centered\n(houseless persons per 1,000 residents)"),
+             coefs = coeff_names_scaled)
+```
+
+
+After scaling the data, the rate of houselessness per 1000 people is 1.89 for the average rates of poverty, percent increase in rent, and beds per houseless population. The R squared value is the same in each version of the tables. Ultimately, the scaled and centered coefficients are easier to read because they are a larger ratio and therefore more applicable. Because our variables are already percentages, a log model did not seem appropriate so we decided not to use this type of transformation. 
+
+
+# Interactions
+
+## State Legistature X Percent Increase in Rent
+
+We want to know if the relationship between the percent increase in rent in each state and the rate of houselessness in each state change depending on the state legislature majority party. To find out, we will interact the state legislature majority party with the percent increase in rent in each state.
+
+### Chart
+
+```{r}
+coeff_names_interaction <- c("Constant" = "(Intercept)",
+                 "Percent Increase in Rent" = "perincrease_rent",
+                 "Percent Increase in Rent (per 1000%)" = "perincrease_rent_1",
+                 "Poverty rate" = "per_pov",
+                 "Poverty rate (per 1000 people)" = "per_pov_1",
+                 "Beds per Houseless Population" = "per_bed",
+                 "Beds per Houseless Population (per 1000 people)" = "per_bed_1",
+                 "Republican State Majority" = "party_statelegRepublican")
+```
+
+
+```{r}
+interaction_model <- lm(per_home ~ perincrease_rent_1 + per_pov_1 + per_bed_1 + party_stateleg + party_stateleg*perincrease_rent_1, centered_data_scaled)
+
+export_summs(centered_model_scaled, interaction_model,
+             error_format = "(p = {p.value})",
+             error_pos = "same",
+             model.names = c("Model 4",
+                             "Model 5"))
+```
+
+We can see that the model fit improved with the new model, but while the interaction between the political party of the state legislature and the percent increase in rent is significant, the difference in values is so small that there isn't a substantial change in percent increase in rent for Democratic versus Republican state legislatures. For both Democratic and Republican state legislatures, the percent increase in rent did not have a substantial effect on the rate of houselessness. We decided to graph the results to better understand what was happening. 
+
+
+### Graph
+
+We can visualize our findings below.
+
+```{r}
+interact_plot(interaction_model, pred = perincrease_rent_1, modx = party_stateleg,
+              interval = TRUE) +
+  scale_x_continuous(breaks = breaks <- c(0, 100, 200, 300, 400),
+                     labels = round(breaks * 0.01 + mean(data$per_pov, na.rm = TRUE)),
+                     name = "Percent Change in Rent") +
+  scale_y_continuous(name = "Predicted Houselessness Rate")
+```
+When we graphed the interaction, we see that Democratic state legislatures did have a higher impact on the percent change in rent and the predicted houselessness rate.
